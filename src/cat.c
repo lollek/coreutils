@@ -11,7 +11,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "Lollek cat v0.1\n");
+  fprintf(status ? stderr : stdout, "Lollek cat v1.0\n");
   return status;
 }
 
