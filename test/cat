@@ -7,19 +7,20 @@ use Test::Simple tests => 30;
 
 my @shortflags = ('b', 'E', 'n', 's', 'T');
 my @longflags = ('number-nonblank', 'show-ends', 'number', 'squeeze-blank', 'show-tabs');
-my $testfile = "test/cat.txt";
+my $testfiles = "test/cat.txt test/long_line.txt";
+
 
 # One short flag
 foreach my $flag (@shortflags) {
-  ok(`cat -$flag $testfile $testfile $testfile` eq 
-     `bin/cat -$flag $testfile $testfile $testfile`)
+  ok(`cat -$flag $testfiles` eq
+     `bin/cat -$flag $testfiles`)
      or die "Failed with -$flag\n";
 }
 
 # One long flag
 foreach my $flag (@longflags) {
-  ok(`cat --$flag $testfile $testfile $testfile` eq 
-     `bin/cat --$flag $testfile $testfile $testfile`)
+  ok(`cat --$flag $testfiles` eq
+     `bin/cat --$flag $testfiles`)
      or die "Failed with --$flag\n";
 }
 
@@ -27,8 +28,8 @@ foreach my $flag (@longflags) {
 foreach my $flag (@shortflags) {
   foreach my $flag2 (@shortflags) {
     if ($flag ne $flag2) {
-      ok(`cat -$flag$flag2 $testfile $testfile $testfile` eq 
-         `bin/cat -$flag$flag2 $testfile $testfile $testfile`)
+      ok(`cat -$flag$flag2 $testfiles` eq
+         `bin/cat -$flag$flag2 $testfiles`)
          or die "Failed with -$flag$flag2\n";
     }
   }
