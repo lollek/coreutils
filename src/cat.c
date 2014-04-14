@@ -47,6 +47,7 @@ int print_file(const char *filename, unsigned option_flags) {
   char buf[BUFLEN];
   static unsigned line_counter = 0;
   static bool last_line_was_blank = false;
+  static bool prevent_enumeration = false;
 
   bool number_lines = false;
   if (option_flags & 0x1) { number_lines = true; }
@@ -77,7 +78,7 @@ int print_file(const char *filename, unsigned option_flags) {
       }
 
       /* Enumerate lines */
-      if (buf[0] != '\0' &&
+      if (!prevent_enumeration && buf[0] != '\0' &&
           (number_lines || (number_nonblanks && buf[0] != '\n'))) {
         printf("%6d\t", ++line_counter);
       }
@@ -108,8 +109,10 @@ int print_file(const char *filename, unsigned option_flags) {
         } else {
           printf("%s\n", bufptr);
         }
+        prevent_enumeration = false;
       } else {
         printf("%s", bufptr);
+        prevent_enumeration = true;
       }
     }
 
