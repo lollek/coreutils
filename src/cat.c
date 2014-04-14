@@ -7,16 +7,30 @@
 
 const char *progname = NULL;
 
+int version() {
+  printf("Lollek cat v0.1\n");
+  return 0;
+}
+
 int usage(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
   fprintf(status ? stderr : stdout,
-      "Usage: %s\n", progname);
+      "Usage: %s [OPTIONS] [FILE]\n"
+      "Concatenate FILE(s), or standard input, to standard output.\n\n"
+      "      --help                display this help and exit\n"
+      "      --version             output version information and exit\n"
+      , progname);
   return status;
 }
 
 int print_file(const char *filename) {
-  FILE *fd = fopen(filename, "r");
+  FILE *fd = NULL;
+  if (!strcmp(filename, "-")) {
+    fd = stdin;
+  } else {
+    fd = fopen(filename, "r");
+  }
   if (fd == NULL) {
     fprintf(stderr, "%s: %s: %s\n", progname, filename, strerror(errno));
     return 1;
@@ -46,7 +60,8 @@ int main(int argc, char **argv) {
     int option_index = 0;
     static struct option long_options[] = {
       {"number", no_argument, 0, 'n'},
-      {"help",   no_argument, 0,  0}
+      {"help",   no_argument, 0,  0},
+      {"version",no_argument, 0,  1}
     };
 
     c = getopt_long(argc, argv, "n", long_options, &option_index);
@@ -55,6 +70,7 @@ int main(int argc, char **argv) {
     }
     switch (c) {
       case 0: return usage(0);
+      case 1: return version();
       default:
         fprintf(stderr, "Try '%s --help' for more information\n", 
                 progname);
