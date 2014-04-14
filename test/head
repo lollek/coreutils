@@ -1,0 +1,49 @@
+#! /usr/bin/env perl
+
+use strict;
+use warnings;
+
+use Test::Simple tests => 3;
+
+#my @shortflags = ('b', 'E', 'n', 's', 'T');
+#my @longflags = ('number-nonblank', 'show-ends', 'number', 'squeeze-blank', 'show-tabs');
+my $testfiles = "test/cat.txt test/long_line.txt";
+
+ok(`head test/long_line.txt` eq
+   `bin/head test/long_line.txt`)
+   or die "Failed with no flags\n";
+
+ok(`head test/cat.txt` eq
+   `bin/head test/cat.txt`)
+   or die "Failed with no flags\n";
+
+ok(`head $testfiles` eq
+   `bin/head $testfiles`)
+   or die "Failed with no flags\n";
+
+=pod
+# One short flag
+foreach my $flag (@shortflags) {
+  ok(`cat -$flag $testfiles` eq
+     `bin/cat -$flag $testfiles`)
+     or die "Failed with -$flag\n";
+}
+
+# One long flag
+foreach my $flag (@longflags) {
+  ok(`cat --$flag $testfiles` eq
+     `bin/cat --$flag $testfiles`)
+     or die "Failed with --$flag\n";
+}
+
+# Combo of 2 short flags
+foreach my $flag (@shortflags) {
+  foreach my $flag2 (@shortflags) {
+    if ($flag ne $flag2) {
+      ok(`cat -$flag$flag2 $testfiles` eq
+         `bin/cat -$flag$flag2 $testfiles`)
+         or die "Failed with -$flag$flag2\n";
+    }
+  }
+}
+=cut
