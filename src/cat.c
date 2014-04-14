@@ -8,9 +8,11 @@
 
 const char *progname = NULL;
 
-int version() {
-  printf("Lollek cat v0.1\n");
-  return 0;
+int version(int status) {
+  /* status == 0 -> print to stdout, exit 0
+   * status == 1 -> print to stderr, exit 1 */
+  fprintf(status ? stderr : stdout, "Lollek cat v0.1\n");
+  return status;
 }
 
 int usage(int status) {
@@ -19,11 +21,12 @@ int usage(int status) {
   fprintf(status ? stderr : stdout,
       "Usage: %s [OPTIONS] [FILE]\n"
       "Concatenate FILE(s), or standard input, to standard output.\n\n"
+      "  -n, --number              number all output lines\n"
       "      --help                display this help and exit\n"
       "      --version             output version information and exit\n\n"
       "With no FILE, or when FILE is -, standard input is read\n"
       , progname);
-  return status;
+  return version(status);
 }
 
 int print_file(const char *filename, int option_flags) {
@@ -87,7 +90,7 @@ int main(int argc, char **argv) {
     switch (c) {
       case 'n': option_flags |= 0x1; break;
       case  0: return usage(0);
-      case  1: return version();
+      case  1: return version(0);
       default:
         fprintf(stderr, "Try '%s --help' for more information\n", 
                 progname);
