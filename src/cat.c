@@ -11,7 +11,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "Lollek cat v1.0\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.0\n");
   return status;
 }
 
@@ -20,7 +20,7 @@ int usage(int status) {
    * status == 1 -> print to stderr, exit 1 */
   fprintf(status ? stderr : stdout,
       "Usage: %s [OPTIONS] [FILE]\n"
-      "Concatenate FILE(s), or standard input, to standard output.\n\n", 
+      "Concatenate FILE(s), or standard input, to standard output\n\n", 
       progname);
   fprintf(status ? stderr : stdout,
       "  -b, --number-nonblank    number nonempty output lines, overrides -n\n"
@@ -112,6 +112,7 @@ int print_file(const char *filename, unsigned option_flags) {
       printf("%s", buf);
     }
   }
+  fclose(fd);
   return 0;
 }
 
