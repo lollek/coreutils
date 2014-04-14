@@ -87,19 +87,17 @@ int print_file(const char *filename, int option_flags) {
 
 int main(int argc, char **argv) {
   progname = argv[0];
-  int c;
   int option_flags = 0;
+  int option_index = 0;
+  static struct option long_options[] = {
+    {"show-ends", no_argument, 0, 'E'},
+    {"number",    no_argument, 0, 'n'},
+    {"help",      no_argument, 0,  0},
+    {"version",   no_argument, 0,  1}
+  };
 
   while (1) {
-    int option_index = 0;
-    static struct option long_options[] = {
-      {"show-ends", no_argument, 0, 'E'},
-      {"number",    no_argument, 0, 'n'},
-      {"help",      no_argument, 0,  0},
-      {"version",   no_argument, 0,  1}
-    };
-
-    c = getopt_long(argc, argv, "En", long_options, &option_index);
+    int c = getopt_long(argc, argv, "En", long_options, &option_index);
     if (c == -1) {
       break;
     }
@@ -115,7 +113,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  /* Concat all files in argc */
   if (optind == argc) {
     print_file("-", option_flags);
   } else {
