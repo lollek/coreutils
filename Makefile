@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -pedantic -Werror -ansi -O3 -g -std=c11
+CFLAGS = -Wall -Wextra -pedantic -Werror -ansi -O3 -g
 OBJS = $(addsuffix .o, $(addprefix src/, $(PROG_NAMES)))
 PROG_NAMES = cat
 PROGS = $(addprefix bin/, $(PROG_NAMES))
