@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -Werror -ansi -O3 -g
-OBJS = $(addsuffix .o, $(addprefix src/, $(PROG_NAMES)))
+OBJS = $(addsuffix .o, $(basename $(wildcard src/*.c)))
 PROG_NAMES = cat
 PROGS = $(addprefix bin/, $(PROG_NAMES))
 
