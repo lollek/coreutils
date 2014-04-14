@@ -60,7 +60,7 @@ int print_file(const char *filename, int option_flags) {
         if (*c == '\n') {
           *c++ = '\0';
           if (number_lines || (number_nonblanks && *tmpbuf != '\0')) {
-            printf("%6d  ", ++line_counter);
+            printf("%6d\t", ++line_counter);
           }
           printf("%s", tmpbuf);
           if (show_ends) {
