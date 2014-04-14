@@ -21,7 +21,7 @@ int usage(int status) {
   fprintf(status ? stderr : stdout,
       "Usage: %s [OPTIONS] [FILE]\n"
       "Concatenate FILE(s), or standard input, to standard output.\n\n"
-      "  -b, --number-nonblank    number nonempty output lines, overrides -n\n"
+      "  -b, --number-nonblank     number nonempty output lines, overrides -n\n"
       "  -E, --show-ends           display $ at end of each line\n"
       "  -n, --number              number all output lines\n"
       "      --help                display this help and exit\n"
