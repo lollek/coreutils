@@ -43,7 +43,7 @@ int print_file(const char *filename, int option_flags) {
   }
 
   char buf[BUFLEN];
-  unsigned line_counter = 0;
+  static unsigned line_counter = 0;
 
   bool number_lines = false;
   if (option_flags & 0x1) { number_lines = true; }
