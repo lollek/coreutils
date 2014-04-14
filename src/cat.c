@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <getopt.h>
 
 #define BUFLEN 256
@@ -19,43 +20,58 @@ int usage(int status) {
       "Usage: %s [OPTIONS] [FILE]\n"
       "Concatenate FILE(s), or standard input, to standard output.\n\n"
       "      --help                display this help and exit\n"
-      "      --version             output version information and exit\n"
+      "      --version             output version information and exit\n\n"
+      "With no FILE, or when FILE is -, standard input is read\n"
       , progname);
   return status;
 }
 
-int print_file(const char *filename) {
+int print_file(const char *filename, int option_flags) {
   FILE *fd = NULL;
   if (!strcmp(filename, "-")) {
     fd = stdin;
   } else {
-    fd = fopen(filename, "r");
-  }
-  if (fd == NULL) {
-    fprintf(stderr, "%s: %s: %s\n", progname, filename, strerror(errno));
-    return 1;
+    if ((fd = fopen(filename, "r")) == NULL) {
+      fprintf(stderr, "%s: %s: %s\n", progname, filename, strerror(errno));
+      return 1;
+    }
   }
 
   char buf[BUFLEN];
-  while (fgets(buf, BUFLEN, fd) != NULL) {
-    printf("%s", buf);
+  unsigned line_counter = 0;
+  bool number_lines = false;
+  if (option_flags & 0x1) {
+    number_lines = true;
   }
+
+  while (fgets(buf, BUFLEN, fd) != NULL) {
+    const char *tmpbuf = buf;
+    if (number_lines) {
+      for (char *c = buf; *c != '\0'; ++c) {
+        if (*c == '\n') {
+          *c++ = '\0';
+          printf("%6d  ", ++line_counter);
+          printf("%s\n", tmpbuf);
+          tmpbuf = c;
+        }
+      }
+      if (*tmpbuf != '\0') {
+        printf("%6d  ", ++line_counter);
+        printf("%s", tmpbuf);
+      }
+    } else {
+      printf("%s", buf);
+    }
+  }
+
   return 0;
 }
 
 int main(int argc, char **argv) {
   progname = argv[0];
-
-  /* If no arguments - just print the stdin */
-  if (argc == 1) {
-    char buf[BUFLEN];
-    while (fgets(buf, BUFLEN, stdin) != NULL) {
-      printf("%s", buf);
-    }
-    return 0;
-  }
-
   int c;
+  int option_flags = 0;
+
   while (1) {
     int option_index = 0;
     static struct option long_options[] = {
@@ -69,17 +85,23 @@ int main(int argc, char **argv) {
       break;
     }
     switch (c) {
-      case 0: return usage(0);
-      case 1: return version();
+      case 'n': option_flags |= 0x1; break;
+      case  0: return usage(0);
+      case  1: return version();
       default:
         fprintf(stderr, "Try '%s --help' for more information\n", 
                 progname);
         return 1;
     }
   }
+
   /* Concat all files in argc */
-  for (int i = 1; i < argc; ++i) {
-    print_file(argv[i]);
+  if (optind == argc) {
+    print_file("-", option_flags);
+  } else {
+    for (int i = optind; i < argc; ++i) {
+      print_file(argv[i], option_flags);
+    }
   }
   return 0;
 }
