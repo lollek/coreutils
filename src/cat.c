@@ -126,7 +126,8 @@ int main(int argc, char **argv) {
     {"squeeze-blank",   no_argument, 0, 's'},
     {"show-tabs",       no_argument, 0, 'T'},
     {"help",            no_argument, 0,  0},
-    {"version",         no_argument, 0,  1}
+    {"version",         no_argument, 0,  1},
+    {0,                 0,           0,  0}
   };
   progname = argv[0];
 
