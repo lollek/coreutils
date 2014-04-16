@@ -20,23 +20,36 @@ struct strlst {
 
 /* Shift the first line in list */
 void strlst_shift() {
-  if (strlst_end != NULL) {
+  if (strlst_start != NULL) {
     struct strlst *node = NULL;
-    while (!strlst_start->has_newline) {
+    while (strlst_start != NULL && !strlst_start->has_newline) {
       node = strlst_start;
       strlst_start = strlst_start->next;
       free(node);
     }
-    node = strlst_start;
-    strlst_start = strlst_start->next;
-    free(node);
+    if (strlst_start != NULL) {
+      node = strlst_start;
+      strlst_start = strlst_start->next;
+      free(node);
+    }
+    if (strlst_start == NULL) {
+      strlst_end = NULL;
+    }
   }
 }
 
-/* Push a new line to list */
-int strlst_push(const char *string, int num_lines) {
+/* Push a new line to list 
+ * string cannot be larger than BUFLEN in size (including '\0') */
+void strlst_push(const char *string, int num_lines) {
   const char *strptr = string;
   int id;
+
+  /* Shift first line in queue if we've reached the max 
+   * If string contains binary data,
+   *   this sometimes unshifts the whole strlst for some reason? */
+  if (strlst_end != NULL && strlst_end->id == num_lines) {
+    strlst_shift();
+  }
 
   /* Initialize the list if needed */
   if (strlst_end == NULL) {
@@ -52,28 +65,7 @@ int strlst_push(const char *string, int num_lines) {
     strlst_end = strlst_start;
   }
 
-  /* Shift first line in queue if we've reached the max */
-  if (strlst_end->id == num_lines) {
-    strlst_shift();
-  }
-
-  /* Add chunks of BUFLEN sized strings */
-  while (strlen(strptr) > BUFLEN -1) {
-    id = strlst_end->id;
-    if ((strlst_end->next = (struct strlst *)malloc(sizeof(struct strlst)))
-        == NULL) {
-      perror("malloc");
-      exit(1);
-    }
-    strlst_end = strlst_end->next;
-    strlst_end->id = id;
-    strlst_end->has_newline = false;
-    strncpy(strlst_end->data, strptr, BUFLEN -1);
-    strlst_end->data[BUFLEN -1] = '\0';
-    strlst_end->next = NULL;
-    strptr += BUFLEN -1;
-  }
-  /* Add last string, which usually has newline */
+  /* Add string */
   id = strlst_end->id;
   if ((strlst_end->next = (struct strlst *)malloc(sizeof(struct strlst)))
       == NULL) {
@@ -94,10 +86,21 @@ int strlst_push(const char *string, int num_lines) {
         ++strlst_end->id;
       }
       strlst_end->has_newline = true;
-      return 0;
+      return;
     }
   }
-  return 0;
+  return;
+}
+
+void strlst_push_string(const char *head, const char *tail, int num_lines) {
+  int chars_to_print = strlen(head) + strlen(tail);
+  char buf[BUFLEN];
+  buf[BUFLEN -1] = '\0';
+
+  while (chars_to_print > 0) {
+    chars_to_print -= snprintf(buf, BUFLEN -1, "%s%s", head, tail);
+    strlst_push(buf, num_lines);
+  }
 }
 
 void strlst_print_all() {
@@ -108,7 +111,9 @@ void strlst_print_all() {
     printf("%s", node->data);
     free(node);
   }
+  strlst_end = NULL;
 }
+
 
 
 /** End of linked list & friends **/
@@ -119,7 +124,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1b\n");
   return status;
 }
 
@@ -200,11 +205,7 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
             if (*num_lines > 0) {
               printf("%s^I", bufptr);
             } else {
-              int chars_to_print = strlen(bufptr) + strlen("^I");
-              while (chars_to_print > 0) {
-                chars_to_print -= snprintf(tmpbuf, BUFLEN -1, "%s^I", bufptr);
-                strlst_push(tmpbuf, -*num_lines);
-              }
+              strlst_push_string(bufptr, "^I", -*num_lines);
             }
             bufptr = ++c;
           } else {
@@ -223,21 +224,13 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
           if (*num_lines > 0) {
             printf("%s$\n", bufptr);
           } else {
-            int chars_to_print = strlen(bufptr) + strlen("$\n");
-            while (chars_to_print > 0) {
-              chars_to_print -= snprintf(tmpbuf, BUFLEN -1, "%s$\n", bufptr);
-              strlst_push(tmpbuf, -*num_lines);
-            }
+            strlst_push_string(bufptr, "$\n", -*num_lines);
           }
         } else {
           if (*num_lines > 0) {
             printf("%s\n", bufptr);
           } else {
-            int chars_to_print = strlen(bufptr) + strlen("\n");
-            while (chars_to_print > 0) {
-              chars_to_print -= snprintf(tmpbuf, BUFLEN -1, "%s\n", bufptr);
-              strlst_push(tmpbuf, -*num_lines);
-            }
+            strlst_push_string(bufptr, "\n", -*num_lines);
           }
         }
         /* If we only print N lines */
@@ -251,11 +244,7 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         if (*num_lines > 0) {
           printf("%s", bufptr);
         } else {
-          int chars_to_print = strlen(bufptr);
-          while (chars_to_print > 0) {
-            chars_to_print -= snprintf(tmpbuf, BUFLEN, "%s", bufptr);
-            strlst_push(tmpbuf, -*num_lines);
-          }
+          strlst_push(bufptr, -*num_lines);
         }
         prevent_enumeration = true;
       }
