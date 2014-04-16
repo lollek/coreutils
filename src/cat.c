@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <string.h>
 #include <errno.h>
@@ -84,16 +85,6 @@ void strlst_push(const char *string, int num_lines) {
   strlst_end->next = NULL;
 }
 
-void strlst_push_string(const char *head, const char *tail, int num_lines) {
-  int chars_to_print = strlen(head) + strlen(tail);
-  char buf[BUFLEN];
-
-  while (chars_to_print > 0) {
-    chars_to_print -= snprintf(buf, BUFLEN -1, "%s%s", head, tail);
-    strlst_push(buf, num_lines);
-  }
-}
-
 void strlst_print_all() {
   struct strlst *node = NULL;
   while (strlst_start != NULL) {
@@ -105,6 +96,22 @@ void strlst_print_all() {
   strlst_end = NULL;
 }
 
+/* My print function to make the code cleaner
+ * When to_strlst is true, it appends the string to strlst
+ * When to_strlst is false, it works like printf */
+void lprintf(bool to_strlst, int num_lines, const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+  if (to_strlst) {
+    char buf[BUFLEN];
+    vsnprintf(buf, BUFLEN, format, args);
+    buf[BUFLEN -1] = '\0';
+    strlst_push(buf, num_lines);
+  } else {
+    vprintf(format, args);
+  }
+  va_end(args);
+}
 
 
 /** End of linked list & friends **/
@@ -115,7 +122,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2b\n");
   return status;
 }
 
@@ -134,6 +141,7 @@ int usage(int status) {
       "  -l, --lines=[-]N         print only the first/last N lines (default 10)\n");
   fprintf(status ? stderr : stdout,
       "  -n, --number             number all output lines\n"
+      "  -p, --page=N             start paging after N lines (default 40)\n"
       "  -s, --squeeze-blank      suppress repeated empty output lines\n"
       "  -t                       equivalent to -vT\n"
       "  -T, --show-tabs          display TAB characters as ^I\n"
@@ -182,13 +190,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
       if (!prevent_enumeration && buf[0] != '\0' &&
           ((option_flags & 0x1 && ~option_flags & 0x4) ||
            (option_flags & 0x4 && buf[0] != '\n'))) {
-        if (*num_lines > 0) {
-          printf("%6d\t", ++line_counter);
-        } else {
-          char tmpbuf[BUFLEN];
-          snprintf(tmpbuf, BUFLEN -1, "%6d\t", ++line_counter);
-          strlst_push(tmpbuf, -*num_lines);
-        }
+        lprintf(option_flags & 0x20 && *num_lines < 0,
+                -*num_lines, "%6d\t", ++line_counter);
       }
 
       /* Show tabs // nonprinting */
@@ -196,11 +199,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         while (*c != '\0' && *c != '\n') {
           if (*c == '\t' && option_flags &0x10) {
             *c = '\0';
-            if (*num_lines > 0) {
-              printf("%s^I", bufptr);
-            } else {
-              strlst_push_string(bufptr, "^I", -*num_lines);
-            }
+            lprintf(option_flags & 0x20 && *num_lines < 0,
+                    -*num_lines, "%s^I", bufptr);
             bufptr = ++c;
           } else if (option_flags &0x40 && *c != '\t') {
             char char_to_print[5] = {0, 0, 0, 0, 0};
@@ -226,12 +226,9 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
                 char_to_print[3] = '?';
               }
             }
-            if (*num_lines > 0) {
-              *c = '\0';
-              printf("%s%s", bufptr, char_to_print);
-            } else {
-              strlst_push_string(bufptr, char_to_print, -*num_lines);
-            }
+            *c = '\0';
+            lprintf(option_flags & 0x20 && *num_lines < 0,
+                    -*num_lines, "%s%s", bufptr, char_to_print);
             bufptr = ++c;
           } else {
             ++c;
@@ -244,20 +241,9 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
 
       if (*c == '\n') {
         *c = '\0';
-        /* Show ends */
-        if (option_flags & 2) {
-          if (*num_lines > 0) {
-            printf("%s$\n", bufptr);
-          } else {
-            strlst_push_string(bufptr, "$\n", -*num_lines);
-          }
-        } else {
-          if (*num_lines > 0) {
-            printf("%s\n", bufptr);
-          } else {
-            strlst_push_string(bufptr, "\n", -*num_lines);
-          }
-        }
+        lprintf(option_flags & 0x20 && *num_lines < 0,
+                -*num_lines, option_flags & 2 ? "%s$\n" : "%s\n", bufptr);
+
         /* If we only print N lines */
         if (option_flags & 0x20) {
           if (*num_lines > 0 && --*num_lines == 0) {
@@ -266,11 +252,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         }
         prevent_enumeration = false;
       } else {
-        if (*num_lines > 0) {
-          printf("%s", bufptr);
-        } else {
-          strlst_push(bufptr, -*num_lines);
-        }
+        lprintf(option_flags & 0x20 && *num_lines < 0,
+                -*num_lines, "%s", bufptr);
         prevent_enumeration = true;
       }
     }
@@ -295,6 +278,7 @@ int main(int argc, char **argv) {
     {"show-ends",        no_argument,       0, 'E'},
     {"lines",            optional_argument, 0, 'l'},
     {"number",           no_argument,       0, 'n'},
+    {"page",             optional_argument, 0, 'p'},
     {"squeeze-blank",    no_argument,       0, 's'},
     {"show-tabs",        no_argument,       0, 'T'},
     {"show-nonprinting", no_argument,       0, 'v'},
@@ -305,7 +289,8 @@ int main(int argc, char **argv) {
   progname = argv[0];
 
   while (1) {
-    int c = getopt_long(argc, argv, "AebEl::nstTv", long_options, &option_index);
+    int c = getopt_long(argc, argv, "AebEl::np::stTv",
+                        long_options, &option_index);
     if (c == -1) {
       break;
     }
@@ -321,6 +306,11 @@ int main(int argc, char **argv) {
                             : atoi(optarg);
                 } break;
       case 'n': option_flags |= 0x1;  break;  /* Number lines */
+      case 'p': option_flags |= 0x80;         /* Page */
+                num_lines = optarg == 0 
+                          ? 40
+                          : atoi(optarg);
+                break;
       case 's': option_flags |= 0x8;  break;  /* Squeeze blanks */
       case 't': option_flags |= 0x10 | 0x40; break;  /* Same as -vT */
       case 'T': option_flags |= 0x10; break;  /* Show tabs */
@@ -342,7 +332,7 @@ int main(int argc, char **argv) {
       print_file(argv[i], option_flags, &num_lines);
     }
   }
-  if (num_lines < 0) {
+  if (option_flags & 0x20 && num_lines < 0) {
     strlst_print_all();
   }
   return 0;
