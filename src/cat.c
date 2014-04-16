@@ -9,6 +9,9 @@
 
 #define BUFLEN 256
 
+/* max_num_lines is set in main() and decreased in print_file */
+int max_num_lines = 10;
+
 /** Linked list of chars and its functions
  * There are used to 'tail' a file | output since I've decided to include
  * that in my cat
@@ -22,7 +25,7 @@ struct strlst {
 
 /* Push a new line to list 
  * string cannot be larger than BUFLEN in size (including '\0') */
-void strlst_push(const char *string, int num_lines) {
+void strlst_push(const char *string) {
   int id = strlst_end == NULL ? 0 : strlst_end->id;
   bool has_newline = false;
   const char *strptr = string;
@@ -31,7 +34,7 @@ void strlst_push(const char *string, int num_lines) {
   for (; *strptr != '\0'; ++strptr) {
     if (*strptr == '\n') {
       has_newline = true;
-      if (id != num_lines) {
+      if (id != max_num_lines) {
         ++id;
       }
       break;
@@ -50,7 +53,7 @@ void strlst_push(const char *string, int num_lines) {
   /* Check if we've reached the max amount of lines to save, 
    *   and in that case we'll remove first line.
    * Sometimes with binary data, this will free the whole list, so watch out! */
-  if (strlst_end != NULL && strlst_end->id == num_lines) {
+  if (strlst_end != NULL && strlst_end->id == max_num_lines) {
     struct strlst *delptr = strlst_start;
     while (delptr != NULL) {
       bool break_next = delptr->has_newline;
@@ -99,14 +102,14 @@ void strlst_print_all() {
 /* My print function to make the code cleaner
  * When to_strlst is true, it appends the string to strlst
  * When to_strlst is false, it works like printf */
-void lprintf(bool to_strlst, int num_lines, const char *format, ...) {
+void lprintf(bool to_strlst, const char *format, ...) {
   va_list args;
   va_start(args, format);
   if (to_strlst) {
     char buf[BUFLEN];
     vsnprintf(buf, BUFLEN, format, args);
     buf[BUFLEN -1] = '\0';
-    strlst_push(buf, num_lines);
+    strlst_push(buf);
   } else {
     vprintf(format, args);
   }
@@ -122,7 +125,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2b\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2c\n");
   return status;
 }
 
@@ -152,7 +155,7 @@ int usage(int status) {
   return version(status);
 }
 
-int print_file(const char *filename, unsigned option_flags, int *num_lines) {
+int print_file(const char *filename, unsigned option_flags) {
   static unsigned line_counter = 0;
   static bool last_line_was_blank = false;
   static bool prevent_enumeration = false;
@@ -190,8 +193,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
       if (!prevent_enumeration && buf[0] != '\0' &&
           ((option_flags & 0x1 && ~option_flags & 0x4) ||
            (option_flags & 0x4 && buf[0] != '\n'))) {
-        lprintf(option_flags & 0x20 && *num_lines < 0,
-                -*num_lines, "%6d\t", ++line_counter);
+        lprintf(option_flags & 0x20 && max_num_lines < 0,
+                "%6d\t", ++line_counter);
       }
 
       /* Show tabs // nonprinting */
@@ -199,8 +202,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         while (*c != '\0' && *c != '\n') {
           if (*c == '\t' && option_flags &0x10) {
             *c = '\0';
-            lprintf(option_flags & 0x20 && *num_lines < 0,
-                    -*num_lines, "%s^I", bufptr);
+            lprintf(option_flags & 0x20 && max_num_lines < 0,
+                    "%s^I", bufptr);
             bufptr = ++c;
           } else if (option_flags &0x40 && *c != '\t') {
             char char_to_print[5] = {0, 0, 0, 0, 0};
@@ -227,8 +230,8 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
               }
             }
             *c = '\0';
-            lprintf(option_flags & 0x20 && *num_lines < 0,
-                    -*num_lines, "%s%s", bufptr, char_to_print);
+            lprintf(option_flags & 0x20 && max_num_lines < 0,
+                    "%s%s", bufptr, char_to_print);
             bufptr = ++c;
           } else {
             ++c;
@@ -241,19 +244,19 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
 
       if (*c == '\n') {
         *c = '\0';
-        lprintf(option_flags & 0x20 && *num_lines < 0,
-                -*num_lines, option_flags & 2 ? "%s$\n" : "%s\n", bufptr);
+        lprintf(option_flags & 0x20 && max_num_lines < 0,
+                option_flags & 2 ? "%s$\n" : "%s\n", bufptr);
 
-        /* If we only print N lines */
+        /* If we only print N lines - decrease the lines left */
         if (option_flags & 0x20) {
-          if (*num_lines > 0 && --*num_lines == 0) {
+          if (max_num_lines > 0 && --max_num_lines == 0) {
             break;
           }
         }
         prevent_enumeration = false;
       } else {
-        lprintf(option_flags & 0x20 && *num_lines < 0,
-                -*num_lines, "%s", bufptr);
+        lprintf(option_flags & 0x20 && max_num_lines < 0,
+                "%s", bufptr);
         prevent_enumeration = true;
       }
     }
@@ -269,7 +272,6 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
 }
 
 int main(int argc, char **argv) {
-  int num_lines = 10;
   unsigned option_flags = 0;
   int option_index = 0;
   struct option long_options[] = {
@@ -299,17 +301,17 @@ int main(int argc, char **argv) {
       case 'b': option_flags |= 0x4;  break;  /* Number nonblank */
       case 'e': option_flags |= 0x2 | 0x40; break;  /* Same as -vE */
       case 'E': option_flags |= 0x2;  break;  /* Show ends */
-      case 'l': option_flags |= 0x20;         /* Number lines */
+      case 'l': option_flags |= 0x20;         /* Print only N lines */
                 if (optarg != 0) {
-                  num_lines = optarg[0] == '-' && optarg[1] == '\0'
-                            ? -num_lines
-                            : atoi(optarg);
+                  max_num_lines = optarg[0] == '-' && optarg[1] == '\0'
+                                ? -max_num_lines
+                                : atoi(optarg);
                 } break;
       case 'n': option_flags |= 0x1;  break;  /* Number lines */
       case 'p': option_flags |= 0x80;         /* Page */
-                num_lines = optarg == 0 
-                          ? 40
-                          : atoi(optarg);
+                max_num_lines = optarg == 0 
+                              ? 40
+                              : atoi(optarg);
                 break;
       case 's': option_flags |= 0x8;  break;  /* Squeeze blanks */
       case 't': option_flags |= 0x10 | 0x40; break;  /* Same as -vT */
@@ -325,14 +327,16 @@ int main(int argc, char **argv) {
   }
 
   if (optind == argc) {
-    print_file("-", option_flags, &num_lines);
+    print_file("-", option_flags);
   } else {
     int i;
-    for (i = optind; i < argc && num_lines != 0; ++i) {
-      print_file(argv[i], option_flags, &num_lines);
+    /* NB: max_num_lines is a global which in some cases is decreased in
+     * print_file (it acts as "lines left" when the -l flag is set) */
+    for (i = optind; i < argc && max_num_lines != 0; ++i) {
+      print_file(argv[i], option_flags);
     }
   }
-  if (option_flags & 0x20 && num_lines < 0) {
+  if (option_flags & 0x20 && max_num_lines < 0) {
     strlst_print_all();
   }
   return 0;
