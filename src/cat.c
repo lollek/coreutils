@@ -18,65 +18,68 @@ struct strlst {
   struct strlst *next;
 } *strlst_start = NULL, *strlst_end = NULL;
 
-/* Shift the first line in list */
-void strlst_shift() {
-  if (strlst_start != NULL) {
-    struct strlst *node = NULL;
-    while (strlst_start != NULL && !strlst_start->has_newline) {
-      node = strlst_start;
-      strlst_start = strlst_start->next;
-      free(node);
+/* Push a new line to list 
+ * string cannot be larger than BUFLEN in size (including '\0') */
+void strlst_push(const char *string, int num_lines) {
+  int id = strlst_end == NULL ? 0 : strlst_end->id;
+  bool has_newline = false;
+  const char *strptr = string;
+
+  /* Check if the string contains newlines */
+  for (; *strptr != '\0'; ++strptr) {
+    if (*strptr == '\n') {
+      has_newline = true;
+      if (id != num_lines) {
+        ++id;
+      }
+      break;
     }
-    if (strlst_start != NULL) {
-      node = strlst_start;
+  }
+  strptr = string;
+
+  /* If neither it nor the previous string does, we can try to concat them.
+   * If it works, we can return */
+  if (!has_newline && strlst_end != NULL && !strlst_end->has_newline &&
+      strlen(string) + strlen(strlst_end->data) < BUFLEN) {
+    strcat(strlst_end->data, string);
+    return;
+  }
+
+  /* Check if we've reached the max amount of lines to save, 
+   *   and in that case we'll remove first line.
+   * Sometimes with binary data, this will free the whole list, so watch out! */
+  if (strlst_end != NULL && strlst_end->id == num_lines) {
+    struct strlst *delptr = strlst_start;
+    while (delptr != NULL) {
+      bool break_next = delptr->has_newline;
       strlst_start = strlst_start->next;
-      free(node);
+      free(delptr);
+      delptr = strlst_start;
+      if (break_next) {
+        break;
+      }
     }
     if (strlst_start == NULL) {
       strlst_end = NULL;
     }
   }
-}
-
-/* Push a new line to list 
- * string cannot be larger than BUFLEN in size (including '\0') */
-void strlst_push(const char *string, int num_lines) {
-  const char *strptr = string;
-  int id;
-
-  /* Shift first line in queue if we've reached the max 
-   * If string contains binary data,
-   *   this sometimes unshifts the whole strlst for some reason? */
-  if (strlst_end != NULL && strlst_end->id == num_lines) {
-    strlst_shift();
-  }
-
-  /* Initialize the list if needed */
-  if (strlst_end == NULL) {
-    if ((strlst_start = (struct strlst *)malloc(sizeof(struct strlst)))
-        == NULL) {
-      perror("malloc");
-      exit(1);
-    }
-    strlst_start->id = 0;
-    strlst_start->has_newline = false;
-    strlst_start->data[0] = '\0';
-    strlst_start->next = NULL;
-    strlst_end = strlst_start;
-  }
 
   /* Add string */
-  id = strlst_end->id;
-  if ((strlst_end->next = (struct strlst *)malloc(sizeof(struct strlst)))
-      == NULL) {
+  if (strlst_end == NULL) {
+    strlst_start = (struct strlst *)malloc(sizeof(struct strlst));
+    strlst_end = strlst_start;
+  } else {
+    strlst_end->next = (struct strlst *)malloc(sizeof(struct strlst));
+    strlst_end = strlst_end->next;
+  }
+  if (strlst_end == NULL) {
     perror("malloc");
     exit(1);
   }
-  strlst_end = strlst_end->next;
+
   strlst_end->id = id;
   strlst_end->has_newline = false;
-  strncpy(strlst_end->data, strptr, BUFLEN -1);
-  strlst_end->data[BUFLEN -1] = '\0';
+  strncpy(strlst_end->data, strptr, BUFLEN);
   strlst_end->next = NULL;
 
   /* Check if it has newline and return */
@@ -95,7 +98,6 @@ void strlst_push(const char *string, int num_lines) {
 void strlst_push_string(const char *head, const char *tail, int num_lines) {
   int chars_to_print = strlen(head) + strlen(tail);
   char buf[BUFLEN];
-  buf[BUFLEN -1] = '\0';
 
   while (chars_to_print > 0) {
     chars_to_print -= snprintf(buf, BUFLEN -1, "%s%s", head, tail);
@@ -124,7 +126,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1b\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1c\n");
   return status;
 }
 
@@ -155,8 +157,6 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
   static bool prevent_enumeration = false;
   FILE *fd = NULL;
   char buf[BUFLEN];
-  char tmpbuf[BUFLEN];
-  tmpbuf[BUFLEN -1] = '\0';
 
   if (!strcmp(filename, "-")) {
     fd = stdin;
@@ -192,6 +192,7 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         if (*num_lines > 0) {
           printf("%6d\t", ++line_counter);
         } else {
+          char tmpbuf[BUFLEN];
           snprintf(tmpbuf, BUFLEN -1, "%6d\t", ++line_counter);
           strlst_push(tmpbuf, -*num_lines);
         }
