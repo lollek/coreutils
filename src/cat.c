@@ -34,7 +34,7 @@ void strlst_push(const char *string) {
   for (; *strptr != '\0'; ++strptr) {
     if (*strptr == '\n') {
       has_newline = true;
-      if (id != max_num_lines) {
+      if (id != -max_num_lines) {
         ++id;
       }
       break;
@@ -53,7 +53,7 @@ void strlst_push(const char *string) {
   /* Check if we've reached the max amount of lines to save, 
    *   and in that case we'll remove first line.
    * Sometimes with binary data, this will free the whole list, so watch out! */
-  if (strlst_end != NULL && strlst_end->id == max_num_lines) {
+  if (strlst_end != NULL && strlst_end->id == -max_num_lines) {
     struct strlst *delptr = strlst_start;
     while (delptr != NULL) {
       bool break_next = delptr->has_newline;
@@ -125,7 +125,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2c\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2d\n");
   return status;
 }
 
