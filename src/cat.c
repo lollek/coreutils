@@ -1,7 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <stdbool.h>
 #include <getopt.h>
 
@@ -114,7 +115,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1d\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.2\n");
   return status;
 }
 
@@ -126,13 +127,17 @@ int usage(int status) {
       "Concatenate FILE(s), or standard input, to standard output\n\n", 
       progname);
   fprintf(status ? stderr : stdout,
+      "  -A, --show-all           equivalent to -vET\n"
       "  -b, --number-nonblank    number nonempty output lines, overrides -n\n"
+      "  -e                       equivalent to -vE\n"
       "  -E, --show-ends          display $ at end of each line\n"
       "  -l, --lines=[-]N         print only the first/last N lines (default 10)\n");
   fprintf(status ? stderr : stdout,
       "  -n, --number             number all output lines\n"
       "  -s, --squeeze-blank      suppress repeated empty output lines\n"
+      "  -t                       equivalent to -vT\n"
       "  -T, --show-tabs          display TAB characters as ^I\n"
+      "  -v, --show-nonprinting   use ^ and M- notation, except for LFD and TAB\n"
       "      --help               display this help and exit\n"
       "      --version            output version information and exit\n\n"
       "With no FILE, or when FILE is -, standard input is read\n");
@@ -186,15 +191,46 @@ int print_file(const char *filename, unsigned option_flags, int *num_lines) {
         }
       }
 
-      /* Show tabs */
-      if (option_flags & 0x10) {
+      /* Show tabs // nonprinting */
+      if (option_flags & (0x10|0x40)) {
         while (*c != '\0' && *c != '\n') {
-          if (*c == '\t') {
+          if (*c == '\t' && option_flags &0x10) {
             *c = '\0';
             if (*num_lines > 0) {
               printf("%s^I", bufptr);
             } else {
               strlst_push_string(bufptr, "^I", -*num_lines);
+            }
+            bufptr = ++c;
+          } else if (option_flags &0x40 && *c != '\t') {
+            char char_to_print[5] = {0, 0, 0, 0, 0};
+            if (*c < 32) { 
+              char_to_print[0] = '^';
+              char_to_print[1] = 64 + *c;
+            } else if (*c < 127) {
+              ++c;
+              continue;
+            } else if (*c == 127) {
+              char_to_print[0] = '^';
+              char_to_print[1] = '?';
+            } else if (*c > 127) {
+              char_to_print[0] = 'M';
+              char_to_print[1] = '-';
+              if (*c < 160) {
+                char_to_print[2] = '^';
+                char_to_print[3] = *c - 96;
+              } else if (*c < 255) {
+                char_to_print[2] = *c - 128;
+              } else {
+                char_to_print[2] = '^';
+                char_to_print[3] = '?';
+              }
+            }
+            if (*num_lines > 0) {
+              *c = '\0';
+              printf("%s%s", bufptr, char_to_print);
+            } else {
+              strlst_push_string(bufptr, char_to_print, -*num_lines);
             }
             bufptr = ++c;
           } else {
@@ -254,25 +290,29 @@ int main(int argc, char **argv) {
   unsigned option_flags = 0;
   int option_index = 0;
   struct option long_options[] = {
-    {"number-nonblank", no_argument,       0, 'b'},
-    {"show-ends",       no_argument,       0, 'E'},
-    {"lines",           optional_argument, 0, 'l'},
-    {"number",          no_argument,       0, 'n'},
-    {"squeeze-blank",   no_argument,       0, 's'},
-    {"show-tabs",       no_argument,       0, 'T'},
-    {"help",            no_argument,       0,  0 },
-    {"version",         no_argument,       0,  1 },
-    {0,                 0,                 0,  0 }
+    {"show-all",         no_argument,       0, 'A'},
+    {"number-nonblank",  no_argument,       0, 'b'},
+    {"show-ends",        no_argument,       0, 'E'},
+    {"lines",            optional_argument, 0, 'l'},
+    {"number",           no_argument,       0, 'n'},
+    {"squeeze-blank",    no_argument,       0, 's'},
+    {"show-tabs",        no_argument,       0, 'T'},
+    {"show-nonprinting", no_argument,       0, 'v'},
+    {"help",             no_argument,       0,  0 },
+    {"version",          no_argument,       0,  1 },
+    {0,                  0,                 0,  0 }
   };
   progname = argv[0];
 
   while (1) {
-    int c = getopt_long(argc, argv, "bEl::nsT", long_options, &option_index);
+    int c = getopt_long(argc, argv, "AebEl::nstTv", long_options, &option_index);
     if (c == -1) {
       break;
     }
     switch (c) {
+      case 'A': option_flags |= 0x2 | 0x10 | 0x40; break; /* Same as -vET */
       case 'b': option_flags |= 0x4;  break;  /* Number nonblank */
+      case 'e': option_flags |= 0x2 | 0x40; break;  /* Same as -vE */
       case 'E': option_flags |= 0x2;  break;  /* Show ends */
       case 'l': option_flags |= 0x20;         /* Number lines */
                 if (optarg != 0) {
@@ -282,7 +322,9 @@ int main(int argc, char **argv) {
                 } break;
       case 'n': option_flags |= 0x1;  break;  /* Number lines */
       case 's': option_flags |= 0x8;  break;  /* Squeeze blanks */
+      case 't': option_flags |= 0x10 | 0x40; break;  /* Same as -vT */
       case 'T': option_flags |= 0x10; break;  /* Show tabs */
+      case 'v': option_flags |= 0x40; break;  /* Show nonprinting */
       case  0: return usage(0);               /* Help */
       case  1: return version(0);             /* Version */
       default:

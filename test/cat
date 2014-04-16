@@ -3,10 +3,11 @@
 use strict;
 use warnings;
 
-use Test::Simple tests => 60;
+use Test::Simple tests => 142;
 
-my @shortflags = ('b', 'E', 'n', 's', 'T');
-my @longflags = ('number-nonblank', 'show-ends', 'number', 'squeeze-blank', 'show-tabs');
+my @shortflags = ('A','b', 'e', 'E', 'n', 's', 't', 'T');
+my @longflags = ('show-all', 'number-nonblank', 'show-ends', 'number', 
+                 'squeeze-blank', 'show-tabs', 'show-nonprinting');
 my $testfiles = "test/cat.txt test/long_line.txt";
 
 
