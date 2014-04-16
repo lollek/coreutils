@@ -78,21 +78,9 @@ void strlst_push(const char *string, int num_lines) {
   }
 
   strlst_end->id = id;
-  strlst_end->has_newline = false;
+  strlst_end->has_newline = has_newline;
   strncpy(strlst_end->data, strptr, BUFLEN);
   strlst_end->next = NULL;
-
-  /* Check if it has newline and return */
-  for(strptr = strlst_end->data; *strptr != '\0'; ++strptr) {
-    if (*strptr == '\n') {
-      if (strlst_end->id != num_lines) {
-        ++strlst_end->id;
-      }
-      strlst_end->has_newline = true;
-      return;
-    }
-  }
-  return;
 }
 
 void strlst_push_string(const char *head, const char *tail, int num_lines) {
@@ -126,7 +114,7 @@ const char *progname = NULL;
 int version(int status) {
   /* status == 0 -> print to stdout, exit 0
    * status == 1 -> print to stderr, exit 1 */
-  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1c\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/cat v1.1d\n");
   return status;
 }
 
