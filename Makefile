@@ -7,7 +7,7 @@ PROGS = $(addprefix bin/, $(PROG_NAMES))
 all: $(OBJS) $(PROG_NAMES)
 
 %: src/%.o
-	$(CC) -o bin/$@ $^
+	$(CC) -o bin/$@ src/$@*.o
 
 clean:
 	$(RM) $(OBJS) $(PROGS)
