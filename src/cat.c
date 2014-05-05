@@ -51,8 +51,6 @@ int usage(int status) {
       "  -l, --lines=[-]N         print only the first/last N lines (default 10)\n");
   fprintf(status ? stderr : stdout,
       "  -n, --number             number all output lines\n"
-      "  -p, --page=N             start paging after N lines (default 40)\n"
-      "                             this option overrides -l\n"
       "  -s, --squeeze-blank      suppress repeated empty output lines\n"
       "  -t                       equivalent to -vT\n"
       "  -T, --show-tabs          display TAB characters as ^I\n"
@@ -67,13 +65,16 @@ void lprintf(const char *format, ...) {
   va_list args;
   va_start(args, format);
   if (output_type == TAIL) {
-    if (strlst_num_nodes() == num_lines) {
-      strlst_shift();
-    }
     char buf[BUFLEN];
     vsnprintf(buf, BUFLEN, format, args);
     buf[BUFLEN -1] = '\0';
+
+    if (strlst_num_nodes() == num_lines) {
+      strlst_shift();
+    }
+
     strlst_push(buf);
+
   } else {
     vprintf(format, args);
   }
@@ -121,12 +122,15 @@ int print_file(const char *filename) {
         lprintf("%6d\t", ++line_counter);
       }
 
+      /* Write special chars for tabs / nonprinting */
       if (show_tabs || show_nonprinting) {
         while (*c != '\0' && *c != '\n') {
+
           if (*c == '\t' && show_tabs) {
             *c = '\0';
             lprintf("%s^I", bufptr);
             bufptr = ++c;
+
           } else if (show_nonprinting && *c != '\t') {
             char char_to_print[5] = {0, 0, 0, 0, 0};
             if (*c < 32) { 
@@ -154,24 +158,24 @@ int print_file(const char *filename) {
             *c = '\0';
             lprintf("%s%s", bufptr, char_to_print);
             bufptr = ++c;
+
           } else {
             ++c;
           }
         }
-      } else {
-        while (*c != '\0' && *c != '\n')
-          ++c;
       }
 
+      while (*c != '\0' && *c != '\n') {
+        ++c;
+      }
       if (*c == '\n') {
         *c = '\0';
         lprintf(show_ends? "%s$\n" : "%s\n", bufptr);
-
-        /* If we only print N lines - decrease the lines left */
         if (output_type == HEAD && --num_lines <= 0) {
           break;
         }
         prevent_enumeration = false;
+
       } else {
         lprintf("%s", bufptr);
         prevent_enumeration = true;
