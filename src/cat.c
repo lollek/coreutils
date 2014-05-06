@@ -54,6 +54,7 @@ int usage(int status) {
       "  -s, --squeeze-blank      suppress repeated empty output lines\n"
       "  -t                       equivalent to -vT\n"
       "  -T, --show-tabs          display TAB characters as ^I\n"
+      "  -u                       unbuffered output\n"
       "  -v, --show-nonprinting   use ^ and M- notation, except for LFD and TAB\n"
       "      --help               display this help and exit\n"
       "      --version            output version information and exit\n\n"
@@ -211,7 +212,7 @@ int main(int argc, char **argv) {
   progname = argv[0];
 
   while (1) {
-    int c = getopt_long(argc, argv, "AebEl::np::stTv",
+    int c = getopt_long(argc, argv, "AebEl::np::stTuv",
                         long_options, &option_index);
     if (c == -1) {
       break;
@@ -236,6 +237,10 @@ int main(int argc, char **argv) {
       case 's': squeeze_blanks = true; break;
       case 't': show_tabs = true; show_nonprinting = true; break;
       case 'T': show_tabs = true; break;
+      case 'u': if (setvbuf(stdout, NULL, _IONBF, 0) != 0) {
+                  fprintf(stderr, "Could not set unbuffered mode: %s", 
+                          strerror(errno));
+                } break;
       case 'v': show_nonprinting = true; break;
       case  0: return usage(0);
       case  1: return version(0);
