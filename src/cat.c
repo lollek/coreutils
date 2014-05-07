@@ -11,7 +11,7 @@
 
 #include "cat_strlst.h"
 
-static const char *progname = NULL;
+const char *progname = NULL;
 
 /* If output_type is HEAD, we will only print num_lines many lines, then quit
  * If output_type is TAIL, we will only print the last num_lines lines

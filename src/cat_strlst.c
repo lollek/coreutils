@@ -7,6 +7,8 @@
 #include "cat_strlst.h"
 
 /* Globals */
+extern const char *progname;
+
 static strlst *strlst_start = NULL;
 static strlst *strlst_end = NULL;
 static int nodes_in_list = 0;
@@ -77,15 +79,15 @@ void strlst_push(const char *string) {
 
   /* Otherwise, we add it as a new node */
   if (strlst_end == NULL) {
-    strlst_start = (struct strlst *)malloc(sizeof(struct strlst));
+    strlst_start = malloc(sizeof *strlst_start);
     strlst_end = strlst_start;
   } else {
-    strlst_end->next = (struct strlst *)malloc(sizeof(struct strlst));
+    strlst_end->next = malloc(sizeof *strlst_end->next);
     strlst_end = strlst_end->next;
   }
   if (strlst_end == NULL) {
-    perror("malloc");
-    exit(1);
+    fprintf(stderr, "%s: Virtual memory exceeded\n", progname);
+    abort();
   }
   strlst_end->has_newline = has_newline;
   strncpy(strlst_end->data, strptr, BUFLEN);

@@ -51,10 +51,10 @@ void *xrealloc(void *ptr, size_t newsize) {
 struct stat **xmalloc_statv(int pathc, const char **pathv) {
   int i;
 
-  struct stat **statv = (struct stat **) xmalloc(sizeof(struct stat*) * pathc);
+  struct stat **statv = xmalloc(sizeof *statv * pathc);
 
   for (i = 0; i < pathc; ++i) {
-    statv[i] = (struct stat *) malloc(sizeof(struct stat));
+    statv[i] = xmalloc(sizeof *statv[i]);
     if (stat(pathv[i], statv[i]) == -1) {
       fprintf(stderr, "%s: cannot access %s: %s\n",
               progname, pathv[i], strerror(errno));
@@ -135,7 +135,7 @@ int printdir(const char *path) {
   int max_dirc = 256;
   int dirc = 0;
   int i;
-  char **dirv = (char **) xmalloc(sizeof(char *) * max_dirc);
+  char **dirv = xmalloc(sizeof *dirv * max_dirc);
 
   if (pathdir == NULL) {
     fprintf(stderr, "%s: cannot access %s: %s\n",
@@ -148,7 +148,7 @@ int printdir(const char *path) {
       max_dirc *= 2;
       dirv = (char **) xrealloc(dirv, sizeof(char *) * max_dirc);
     }
-    dirv[dirc] = (char *) xmalloc(sizeof(char) * (NAME_MAX +1));
+    dirv[dirc] = xmalloc(sizeof *dirv[dirc] * (NAME_MAX +1));
     strcpy(dirv[dirc], path_dirent->d_name);
     ++dirc;
   }
