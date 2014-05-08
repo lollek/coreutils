@@ -5,6 +5,12 @@ typedef enum ls_sort_t {
   COLL
 } ls_sort_t;
 
+typedef enum list_which_files_t {
+  ALL,
+  ALMOST_ALL,
+  NOT_HIDDEN
+} list_which_files_t;
+
 /** version: prints version and returns
  ** usage: prints usage and version and returns 
  *
@@ -41,7 +47,7 @@ void sort_pathv_coll(int lh, int rh, const char **pathv,
 void sort_pathv_filetype_coll(int lh, int rh, const char **pathv,
                               struct stat **statv);
 
-int print_path(const char *path);
+int print_path(const char *path, struct stat *stat);
 int ls(int pathc, const char **pathv);
 
 #endif /* __LOLLEK_LS_H__ */
