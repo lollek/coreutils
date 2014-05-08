@@ -8,13 +8,13 @@
 #include <errno.h> //errno
 #include <linux/limits.h> //NAME_MAX
 
+#include "ls.h"
+
 static const char *progname = NULL;
-static enum ls_sort_t {
-  COLL
-} sorting = COLL;
+static ls_sort_t sorting = COLL;
 
 int version(int status) {
-  fprintf(status ? stderr : stdout, "lollek-coreutils/ls v0.1\n");
+  fprintf(status ? stderr : stdout, "lollek-coreutils/ls v0.1b\n");
   return status;
 }
 
@@ -74,58 +74,60 @@ void free_statv(int pathc, struct stat **statv) {
   free(statv);
 }
 
-/* Sorts files and folders in pathv
- * pathc: number of files and folders to sort
- * pathv: names of files and folders to sort
- * pathv: stats of files and folders to sort
- */
 void sort_pathv(int pathc, const char **pathv, struct stat **statv) {
   int i, j;
-  bool lh_is_dir = false;
-  bool rh_is_dir = false;
+  void (*sorting_fun)(int, int, const char **, struct stat **);
 
   if (sorting == COLL) {
-    struct stat *statptr = NULL;
-    const char *pathptr = NULL;
-    for (i = 0; i < pathc; ++i) {
-      for (j = 1; j < pathc - i; ++j) {
-        if (statv[j-1] == NULL) {
-          continue;
-        }
-        if (statv[j] != NULL) {
-          lh_is_dir = S_ISDIR(statv[j-1]->st_mode);
-          rh_is_dir = S_ISDIR(statv[j]->st_mode);
-        }
-        if (statv[j] == NULL ||
-            (lh_is_dir && !rh_is_dir) ||
-            (lh_is_dir == rh_is_dir && strcmp(pathv[j-1], pathv[j]) > 0)) {
-          statptr = statv[j];
-          statv[j] = statv[j-1];
-          statv[j-1] = statptr;
+    sorting_fun = statv != NULL
+      ? sort_pathv_filetype_coll
+      : sort_pathv_coll;
+  }
 
-          pathptr = pathv[j];
-          pathv[j] = pathv[j-1];
-          pathv[j-1] = pathptr;
-        }
+  for (i = 0; i < pathc; ++i) {
+    for (j = 1; j < pathc - i; ++j) {
+      if (sorting == COLL) {
+        sorting_fun(j-1, j, pathv, statv);
       }
     }
   }
 }
 
-void sort_dir(int dirc, const char **dirv) {
-  int i, j;
+void sort_pathv_coll(int lh, int rh, const char **pathv,
+                     struct stat **statv __attribute__ ((unused))) {
+  if (strcmp(pathv[lh], pathv[rh]) > 0) {
+    const char *pathptr = NULL;
+    pathptr = pathv[rh];
+    pathv[rh] = pathv[lh];
+    pathv[lh] = pathptr;
+  }
+}
 
-  if (sorting == COLL) {
-    const char *dirptr = NULL;
-    for (i = 0; i < dirc; ++i) {
-      for (j = 1; j < dirc - i; ++j) {
-        if (strcmp(dirv[j-1], dirv[j]) > 0) {
-          dirptr = dirv[j];
-          dirv[j] = dirv[j-1];
-          dirv[j-1] = dirptr;
-        }
-      }
-    }
+void sort_pathv_filetype_coll(int lh, int rh, const char **pathv,
+                              struct stat **statv) {
+  bool lh_is_dir;
+  bool rh_is_dir;
+
+  if (statv[lh] == NULL) {
+    return;
+  }
+
+  if (statv[rh] != NULL) {
+    lh_is_dir = S_ISDIR(statv[lh]->st_mode);
+    rh_is_dir = S_ISDIR(statv[rh]->st_mode);
+  }
+
+  if (statv[rh] == NULL ||
+      (lh_is_dir && !rh_is_dir) ||
+      (lh_is_dir == rh_is_dir && strcmp(pathv[lh], pathv[rh]) > 0)) {
+    struct stat *statptr = statv[rh];
+    const char *pathptr = pathv[rh];
+
+    statv[rh] = statv[lh];
+    statv[lh] = statptr;
+
+    pathv[rh] = pathv[lh];
+    pathv[lh] = pathptr;
   }
 }
 
@@ -153,7 +155,7 @@ int printdir(const char *path) {
     ++dirc;
   }
 
-  sort_dir(dirc, (const char **) dirv);
+  sort_pathv(dirc, (const char **) dirv, NULL);
   for (i = 0; i < dirc; ++i) {
     if (dirv[i] != NULL) {
       printf("%s ", dirv[i]);
