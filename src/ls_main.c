@@ -10,6 +10,25 @@ const char *progname = NULL;
 ls_sort_t sorting = COLL;
 list_which_files_t list_which_files = NOT_HIDDEN;
 
+int version(int status) {
+  fprintf(status ? stderr : stdout, "lollek-coreutils/ls v0.2b\n");
+  return status;
+}
+
+int usage(int status) {
+  fprintf(status ? stderr : stdout,
+      "Usage: %s [OPTIONS] [FILE]\n"
+      "List information about FILE (the current directory by default)\n"
+      "The entires are sorted alphabetically by default\n\n",
+      progname);
+  fprintf(status ? stderr : stdout,
+      "  -a, --all                do not ignore entries starting with .\n"
+      "  -A, --almost-all         do not list implied . and ..\n"
+      "      --help               display this help and exit\n"
+      "      --version            output version information and exit\n\n");
+  return version(status);
+}
+
 int main(int argc, char **argv) {
   int option_index = 0;
   struct option long_options[] = {

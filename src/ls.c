@@ -13,23 +13,6 @@ extern const char *progname;
 extern ls_sort_t sorting;
 extern list_which_files_t list_which_files;
 
-int version(int status) {
-  fprintf(status ? stderr : stdout, "lollek-coreutils/ls v0.2\n");
-  return status;
-}
-
-int usage(int status) {
-  fprintf(status ? stderr : stdout,
-      "Usage: %s [OPTIONS] [FILE]\n"
-      "List information about FILE (the current directory by default)\n"
-      "The entires are sorted alphabetically by default\n\n",
-      progname);
-  fprintf(status ? stderr : stdout,
-      "      --help               display this help and exit\n"
-      "      --version            output version information and exit\n\n");
-  return version(status);
-}
-
 void *xmalloc(size_t size) {
   void *ptr = malloc(size);
   if (ptr == NULL) {
