@@ -41,7 +41,7 @@ void sort_pathv_coll(int lh, int rh, const char **pathv,
 void sort_pathv_filetype_coll(int lh, int rh, const char **pathv,
                               struct stat **statv);
 
-int printdir(const char *path);
+int print_path(const char *path);
 int ls(int pathc, const char **pathv);
 
 #endif /* __LOLLEK_LS_H__ */
